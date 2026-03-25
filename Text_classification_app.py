@@ -34,9 +34,9 @@ def predict(text):
   review_pre = tfidf.transform([review_updated]).toarray()
   probs = model.predict(review_pre,verbose=0)
   if probs>0.5:
-    print("Positive Review")
+    st.subheader("Positive Review")
   else:
-    print("Negative Review")
+    st.subheader("Negative Review")
 
 if submit:
     predict(review)  
