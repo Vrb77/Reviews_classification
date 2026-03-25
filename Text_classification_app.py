@@ -1,10 +1,43 @@
+import re
+import numpy as np
 import streamlit as st
 import joblib
-import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline
 from keras.models import load_model
 
-# set the tab title
-st.set_page_config("Review Classification")
+# ── These classes MUST be defined here so joblib can unpickle the pipeline ──
+
+class TextCleaner(BaseEstimator, TransformerMixin):
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return [self._clean(text) for text in X]
+
+    def _clean(self, text):
+        text = text.lower()
+        pattern = r"[^a-z ]"
+        text = re.sub(pattern, "", text)
+        return text
+
+
+class TextTransformer(BaseEstimator, TransformerMixin):
+
+    def fit(self, X, y=None):
+        self.tfidf = TfidfVectorizer()
+        self.tfidf.fit(X)
+        return self
+
+    def transform(self, X):
+        return self.tfidf.transform(X).toarray()
+
+# ────────────────────────────────────────────────────────────────────────────
+
+# Set the tab title
+st.set_page_config(page_title="Review Classification")
 
 # Set the page title
 st.title("Positive and Negative Review Classification Project")
@@ -16,22 +49,22 @@ st.subheader("By Vaishnavi Badade")
 pre = joblib.load("text_classification_pre.joblib")
 model = load_model("TextClassification.keras")
 
-# Create Input boxes that takes input from the user 
+# Text input (reviews are text, not numbers)
+review = st.text_input("Enter your review")
 
-review = st.number_input("review")
-
-
-# Include a button. After providing all the inputs, user will click on the button. The button should provide the necessary predictions
+# Predict button
 submit = st.button("Predict Sentiment")
 
 if submit:
-
-    # Apply data cleaning and preprocessing on new data using pre pipeline
-    transformed_text = pre.transform(review)
-
-    # predictions
-    preds = model.predict(transformed_text)
-    if preds>0.5:
-        st.subheader("Positive Review")
+    if not review.strip():
+        st.warning("Please enter a review before predicting.")
     else:
-        st.subheader("Negative Review")   
+        # Pipeline expects a list of strings
+        transformed_text = pre.transform([review])
+
+        # Prediction
+        preds = model.predict(transformed_text)
+        if preds[0][0] > 0.5:
+            st.subheader("✅ Positive Review")
+        else:
+            st.subheader("❌ Negative Review")
