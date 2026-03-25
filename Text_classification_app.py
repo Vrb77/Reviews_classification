@@ -1,54 +1,46 @@
-import re
 import streamlit as st
 import joblib
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
+import pandas as pd
 from keras.models import load_model
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+tfidf =TfidfVectorizer()
 
+# set the tab title
+st.set_page_config("Review Classification")
 
-# ── IMPORTANT: These classes must be defined BEFORE joblib.load() ──
-# They must also match EXACTLY what was used when saving the .joblib file.
-
-class TextCleaner(BaseEstimator, TransformerMixin):
-    def fit(self, X, y=None):
-        return self
-    def transform(self, X):
-        return [self._clean(text) for text in X]
-    def _clean(self, text):
-        text = text.lower()
-        text = re.sub(r"[^a-z ]", "", text)
-        return text
-
-class TextTransformer(BaseEstimator, TransformerMixin):
-    def fit(self, X, y=None):
-        self.tfidf = TfidfVectorizer()
-        self.tfidf.fit(X)
-        return self
-    def transform(self, X):
-        return self.tfidf.transform(X).toarray()
-
-
-# ── Page config ──
-st.set_page_config(page_title="Review Classification")
+# Set the page title
 st.title("Positive and Negative Review Classification Project")
+
+# Set header
 st.subheader("By Vaishnavi Badade")
 
-# ── Load pipeline and model ──
+# Load the pipeline (data cleaning, preprocessing) and model
 pre = joblib.load("text_classification_pre.joblib")
 model = load_model("TextClassification.keras")
 
-# ── UI ──
-review = st.text_input("Enter your review")
+# Create Input boxes that takes input from the user 
+
+review = st.number_input("review")
+
+
+# Include a button. After providing all the inputs, user will click on the button. The button should provide the necessary predictions
 submit = st.button("Predict Sentiment")
 
+def preprocess(text):
+  text=text.lower()
+  pattern = r"[^a-z ]"
+  text=re.sub(pattern,"",text)
+  return text
+
+def predict(text):
+  review_updated = preprocess(text)
+  review_pre = tfidf.transform([review_updated]).toarray()
+  probs = model.predict(review_pre,verbose=0)
+  if probs>0.5:
+    print("Positive Review")
+  else:
+    print("Negative Review")
+
 if submit:
-    if not review.strip():
-        st.warning("Please enter a review before predicting.")
-    else:
-        transformed_text = pre.transform([review])
-        preds = model.predict(transformed_text)
-        if preds[0][0] > 0.5:
-            st.subheader("✅ Positive Review")
-        else:
-            st.subheader("❌ Negative Review")
+    predict(review)  
